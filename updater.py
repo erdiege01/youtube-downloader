@@ -21,7 +21,7 @@ GITHUB_REPO = "erdiege01/youtube-downloader"
 # Yayınlanecek exe dosyasının adı (release ekine eklediğiniz dosya)
 ASSET_NAME = "YouTubeDownloader.exe"
 
-CURRENT_VERSION = "1.1.0"
+CURRENT_VERSION = "1.2.0"
 
 
 def get_current_version() -> str:

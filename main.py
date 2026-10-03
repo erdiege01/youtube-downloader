@@ -444,16 +444,27 @@ class YouTubeDownloader:
         if self.has_node:
             opts["js_runtimes"] = {"node": {}}
 
+        # Kapak fotoğrafı indirilen dosyanın içine gömülür (MP4 ve MP3).
+        # yt-dlp kendi indirdiği thumbnail'ı gömmeden önce diske yazar.
+        opts["writethumbnail"] = True
+
         if is_mp3:
             opts["format"] = "bestaudio/best"
-            opts["postprocessors"] = [{
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                "preferredquality": "192",
-            }]
+            opts["postprocessors"] = [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                },
+                # SIRALAMA ÖNEMLİ: dosya önce .mp3'e dönüşmeli,
+                # ancak ondan sonra kapak eklenebilir.
+                {"key": "EmbedThumbnail"},
+            ]
         else:
             # Ses her zaman videoya gömülür; sonuç tek bir dosyadır.
             opts["merge_output_format"] = "mp4"
+            # Birleştirmeden sonra (post_process) eklenir.
+            opts["postprocessors"] = [{"key": "EmbedThumbnail"}]
             if quality == "En İyi":
                 # Önce H.264/MP4 (her oynatıcıda çalışır), olmazsa genel seçenek
                 opts["format"] = (
@@ -613,6 +624,38 @@ class YouTubeDownloader:
                 continue
         return problems
 
+    def _files_without_cover(self, files) -> list:
+        """
+        Kapak fotoğrafı gömülmemiş MP4/MP3 dosyalarını listeler.
+
+        mutagen yoksa doğrulama yapılamaz -> [] döner (ses kontrolünün
+        ffprobe/yok durumunda davrandığı gibi).
+        """
+        try:
+            import mutagen  # noqa: F401
+        except ImportError:
+            return []
+
+        problems = []
+        for path in files:
+            ext = Path(path).suffix.lower()
+            try:
+                if ext == ".mp4":
+                    from mutagen.mp4 import MP4
+                    meta = MP4(path)
+                    has_cover = bool(meta.tags and meta.tags.get("covr"))
+                elif ext == ".mp3":
+                    from mutagen.id3 import ID3
+                    has_cover = bool(ID3(path).getall("APIC"))
+                else:
+                    continue
+            except Exception:
+                # Etiket yok / okunamadı -> kapak da yoktur
+                has_cover = False
+            if not has_cover:
+                problems.append(path)
+        return problems
+
     def _download_worker(self, url: str, settings: dict):
         """İndirme işlemi — her zaman worker thread'de çalışır (Tk'a dokunmaz)."""
         is_channel = settings["is_channel"]
@@ -658,6 +701,8 @@ class YouTubeDownloader:
         if done > 0:
             # Birleştirme gerçekten oldu mu? (ses olmayan videoları yakala)
             no_audio = self._files_without_audio(self._done_files)
+            # Kapak fotoğrafı gömüldü mü? (estetik — pencere açmaya değmez)
+            no_cover = self._files_without_cover(self._done_files)
 
             summary = f"Tamamlandı — {done} dosya indirildi"
             if failed:
@@ -688,6 +733,12 @@ class YouTubeDownloader:
                     "FFmpeg kurulumunu kontrol edin.")
             else:
                 self.ui(messagebox.showinfo, "Başarılı", summary + ".")
+
+            if no_cover:
+                self.log(f"Bilgi: {len(no_cover)} dosyada kapak fotoğrafı "
+                         "eklenemedi (video ve ses sorunsuz):")
+                for path in no_cover:
+                    self.log(f"  • {os.path.basename(path)}")
         else:
             self.ui(self._set_status, "İndirme başarısız")
             self.ui(self.progress.configure, {"value": 0})
@@ -809,13 +860,15 @@ def _run_self_test():
             raise RuntimeError("Hiç dosya indirilemedi")
 
         no_audio = app._files_without_audio(files)
+        no_cover = app._files_without_cover(files)
         if no_audio:
             lines.append(f"SONUÇ: BAŞARISIZ — ses yok: "
                          f"{[Path(f).name for f in no_audio]}")
         else:
             size = sum(Path(f).stat().st_size for f in files)
-            lines.append(f"SONUÇ: BAŞARILI — video+ses birleştirildi "
-                         f"({size // 1024} KB)")
+            cover = "kapak eklendi" if not no_cover else "KAPAK EKLENEMEDİ"
+            lines.append(f"SONUÇ: BAŞARILI — video+ses birleştirildi, "
+                         f"{cover} ({size // 1024} KB)")
 
     except Exception as e:
         lines.append(f"SONUÇ: BAŞARISIZ — {type(e).__name__}: {e}")

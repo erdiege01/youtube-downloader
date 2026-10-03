@@ -17,6 +17,10 @@ def build():
         '--windowed',  # Konsol penceresi gösterme
         '--clean',
         '--noconfirm',
+        # MP4/MP3 kapak fotoğrafı gömme (EmbedThumbnail) için
+        '--hidden-import=mutagen',
+        '--hidden-import=mutagen.mp4',
+        '--hidden-import=mutagen.id3',
     ]
 
     if os.path.exists(icon_path):

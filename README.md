@@ -11,6 +11,8 @@ Windows için tek dosyalık YouTube indirme programı. Tek video, bir kanalın
 - **Kalite seçimi** — En İyi / 1080p / 720p / 480p / 360p
 - **İptal butonu** — devam eden indirmeyi durdurur, tamamlananlar silinmez
 - **Ses kontrolü** — birleştirme başarısız olursa program açıkça uyarır
+- **Kapak fotoğrafı** — MP4 ve MP3 dosyasının içine YouTube kapak fotoğrafı gömülür
+  (oynatıcıda/telefonda albüm kapağı olarak görünür)
 - **Otomatik güncelleme** — her açılışta GitHub'daki son sürümü kontrol eder
 
 ## Kurulum
