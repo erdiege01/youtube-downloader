@@ -10,6 +10,9 @@ __pycache__/
 .venv/
 venv/
 
+# Kullanıcının başka projeleri bu repoya karışmasın
+YTAdShield/
+
 # Tanılama / test dosyaları
 VideoIndirici_test.txt
 VideoIndirici_diagnostik.txt

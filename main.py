@@ -37,8 +37,12 @@ VIDEO_PATTERNS = {
     "youtube": r"youtube\.com/watch\?v=|youtu\.be/|youtube\.com/(?:shorts|live|embed)/",
     "instagram": r"instagram\.com/(?:p|reel|reels|tv|stories)/",
     "tiktok": r"tiktok\.com/@[\w.\-]+/video/\d+|(?:vm|vt)\.tiktok\.com/",
-    "facebook": (r"facebook\.com/[\w.\-]+/videos/\d+|facebook\.com/watch/?\?v="
-                 r"|facebook\.com/reel/\d+|fb\.watch/"),
+    "facebook": (r"facebook\.com/[\w.\-]+/videos/\d+"
+                 r"|facebook\.com/watch/?\?v="
+                 r"|facebook\.com/reel/\d+"
+                 r"|facebook\.com/share/[vrl]/"
+                 r"|facebook\.com/(?:story|permalink|photo)\.php"
+                 r"|fb\.watch/"),
 }
 
 # Profil / sayfa (toplu indirilecek) URL desenleri — şimdilik yalnızca YouTube
@@ -992,12 +996,24 @@ class VideoDownloader:
 
 def _run_self_test():
     """
-    Gizli mod: `VideoDownloader.exe --test`
+    Gizli mod: `VideoIndirici.exe --test [baglanti] [--cookies]`
 
     Paketi olduğu gibi indirme yaparak doğrular ve sonucu
     "VideoIndirici_test.txt" dosyasına yazar. Paketi kopyaladığınız
     bilgisayarda bu dosyayı açarak sonucu görebilirsiniz.
+
+    Bağlantı verilirse varsayılan test videosu yerine o bağlantı denenir
+    (ör. çalışmayan bir Facebook/TikTok linkini bu şekilde sınayın).
+    `--cookies` eklenirse tarayıcı çerezleri kullanılır.
     """
+    # --test <url> : verilen bağlantıyı dene (yoksa varsayılan test videosu)
+    test_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+    if "--test" in sys.argv:
+        idx = sys.argv.index("--test")
+        if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("-"):
+            test_url = sys.argv[idx + 1]
+    use_cookies = "--cookies" in sys.argv
+
     lines = []
     root = None
     try:
@@ -1009,6 +1025,9 @@ def _run_self_test():
         lines.append(f"Sürüm: {get_current_version()}")
         lines.append(f"Bulunan FFmpeg: {app.ffmpeg_path}")
         lines.append(f"Node.js: {'var' if app.has_node else 'yok (sorun değil)'}")
+        lines.append(f"Test bağlantısı: {test_url}")
+        lines.append(f"Platform: {SITE_NAMES.get(app.detect_site(test_url), 'bilinmiyor')}")
+        lines.append(f"Çerezler: {'kullanılacak' if use_cookies else 'kullanılmayacak'}")
         if not app.has_ffmpeg:
             raise RuntimeError("FFmpeg bulunamadı — ffmpeg klasörünü exe yanına koyun")
 
@@ -1024,13 +1043,15 @@ def _run_self_test():
             "path": str(outdir),
             "format": "MP4 (Video)",
             "quality": "En İyi",
-            "is_channel": False,
+            "is_channel": app.is_channel_url(test_url),
+            "site": app.detect_site(test_url),
+            "use_cookies": use_cookies,
         }
         opts = app.get_ydl_opts(settings)
         opts["ignoreerrors"] = False  # testte hata gizlenmesin
 
         with yt_dlp.YoutubeDL(opts) as ydl:
-            ydl.download(["https://www.youtube.com/watch?v=jNQXAC9IVRw"])
+            ydl.download([test_url])
 
         files = [str(p) for p in outdir.iterdir() if p.is_file()]
         lines.append(f"İndirilen: {[Path(f).name for f in files] or 'YOK'}")
@@ -1080,7 +1101,7 @@ def _module_status(name: str) -> str:
 
 def _run_diagnostics():
     """
-    Gizli mod: `VideoDownloader.exe --diag`
+    Gizli mod: `VideoIndirici.exe --diag`
 
     Ortam bilgisini bir metin dosyasına yazar ve çıkar. Paketin başka bir
     bilgisayarda neden çalışmadığını anlamak için kullanılır.
