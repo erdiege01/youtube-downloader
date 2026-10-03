@@ -1,6 +1,6 @@
 """
-YouTube İndirici - Ana Program
-Tek video, kanalın tüm videoları ve MP3 indirme desteği
+Video İndirici - Ana Program
+YouTube, Instagram, TikTok ve Facebook'tan tek video / kanal / MP3 indirme
 """
 import os
 import queue
@@ -13,13 +13,39 @@ import threading
 import time
 from pathlib import Path
 from tkinter import (
-    Tk, StringVar, filedialog, messagebox, ttk, scrolledtext, Menu
+    Tk, StringVar, BooleanVar, filedialog, messagebox, ttk, scrolledtext, Menu
 )
 
 import yt_dlp
 from yt_dlp import utils as ytdlp_utils
 
 from updater import cleanup_old_builds, get_current_version
+
+# --------------------------------------------------------------------------
+# Desteklenen platformlar
+# --------------------------------------------------------------------------
+# Site anahtarı -> arayüzde görünen ad
+SITE_NAMES = {
+    "youtube": "YouTube",
+    "instagram": "Instagram",
+    "tiktok": "TikTok",
+    "facebook": "Facebook",
+}
+
+# Tek video (tekil içerik) URL desenleri
+VIDEO_PATTERNS = {
+    "youtube": r"youtube\.com/watch\?v=|youtu\.be/|youtube\.com/(?:shorts|live|embed)/",
+    "instagram": r"instagram\.com/(?:p|reel|reels|tv|stories)/",
+    "tiktok": r"tiktok\.com/@[\w.\-]+/video/\d+|(?:vm|vt)\.tiktok\.com/",
+    "facebook": (r"facebook\.com/[\w.\-]+/videos/\d+|facebook\.com/watch/?\?v="
+                 r"|facebook\.com/reel/\d+|fb\.watch/"),
+}
+
+# Profil / sayfa (toplu indirilecek) URL desenleri — şimdilik yalnızca YouTube
+CHANNEL_PATTERNS = (
+    r"youtube\.com/@[\w.\-]+(?:/[A-Za-z_]+)?/?$"
+    r"|youtube\.com/(?:channel|user|c)/[\w.\-]+(?:/[A-Za-z_]+)?/?$"
+)
 
 
 def _find_ffmpeg() -> str | None:
@@ -128,10 +154,39 @@ class _YdlLogger:
         self._log(f"HATA: {msg}")
 
 
-class YouTubeDownloader:
+def _find_browser_for_cookies() -> str | None:
+    """
+    Çerezleri okunacak tarayıcıyı bulur (Facebook / Instagram girişi için).
+
+    yt-dlp `cookiesfrombrowser` ile tarayıcının çerez deposunu okuyup giriş
+    yapmış oturumu kullanabilir. Windows'ta tarayıcı adı bilinmediği için
+    kurulu olan profiller taranır; ilk bulunan kullanılır.
+    """
+    local = Path(os.environ.get("LOCALAPPDATA", "") or "")
+    roaming = Path(os.environ.get("APPDATA", "") or "")
+    candidates = (
+        ("edge", local / "Microsoft" / "Edge" / "User Data"),
+        ("chrome", local / "Google" / "Chrome" / "User Data"),
+        ("brave", local / "BraveSoftware" / "Brave-Browser" / "User Data"),
+        ("vivaldi", local / "Vivaldi" / "User Data"),
+        ("opera", roaming / "Opera Software" / "Opera Stable"),
+        ("opera-gx", roaming / "Opera Software" / "Opera GX Stable"),
+        ("firefox", roaming / "Mozilla" / "Firefox" / "Profiles"),
+        ("chromium", local / "Chromium" / "User Data"),
+    )
+    for name, path in candidates:
+        try:
+            if path.is_dir():
+                return name
+        except OSError:
+            continue
+    return None
+
+
+class VideoDownloader:
     def __init__(self, root):
         self.root = root
-        self.root.title(f"YouTube İndirici v{get_current_version()}")
+        self.root.title(f"Video İndirici v{get_current_version()}")
         self.root.geometry("720x640")
         self.root.resizable(True, True)
 
@@ -165,8 +220,9 @@ class YouTubeDownloader:
         self.create_widgets()
         self.root.after(50, self._drain_ui_queue)
 
+        self.log("Platformlar: YouTube · Instagram · TikTok · Facebook")
         self.log(f"FFmpeg: {'bulundu — ' + self.ffmpeg_path if self.has_ffmpeg else 'BULUNAMADI'}")
-        self.log(f"Node.js: {'bulundu' if self.has_node else 'BULUNAMADI (bazı videolarda sorun olabilir)'}")
+        self.log(f"Node.js: {'bulundu' if self.has_node else 'BULUNAMADI (yalnızca YouTube format listesi için gerekir)'}")
         if not self.has_ffmpeg:
             self.log("UYARI: FFmpeg yok — video+ses birleştirme ve MP3 yapılamaz.")
         elif not shutil.which("ffmpeg"):
@@ -212,7 +268,7 @@ class YouTubeDownloader:
         self.root.rowconfigure(0, weight=1)
 
         # URL girişi
-        ttk.Label(main_frame, text="YouTube URL'si:").grid(
+        ttk.Label(main_frame, text="Bağlantı (YouTube · Instagram · TikTok · Facebook):").grid(
             row=0, column=0, sticky="w", pady=(0, 5))
         url_frame = ttk.Frame(main_frame)
         url_frame.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 10))
@@ -251,9 +307,17 @@ class YouTubeDownloader:
         quality_combo["values"] = ("En İyi", "1080p", "720p", "480p", "360p")
         quality_combo.grid(row=8, column=0, sticky="w", pady=(0, 10))
 
+        # Tarayıcı çerezleri (Facebook / Instagram girişi için gerekebilir)
+        self.use_cookies_var = BooleanVar(value=False)
+        ttk.Checkbutton(
+            main_frame,
+            text="Tarayıcı çerezlerini kullan (Facebook / Instagram girişi için)",
+            variable=self.use_cookies_var,
+        ).grid(row=9, column=0, sticky="w", pady=(0, 10))
+
         # Butonlar
         btn_frame = ttk.Frame(main_frame)
-        btn_frame.grid(row=9, column=0, columnspan=3, pady=(10, 10), sticky="ew")
+        btn_frame.grid(row=10, column=0, columnspan=3, pady=(10, 10), sticky="ew")
         btn_frame.columnconfigure(0, weight=1)
 
         self.download_btn = ttk.Button(
@@ -266,19 +330,19 @@ class YouTubeDownloader:
 
         # İlerleme çubuğu
         self.progress = ttk.Progressbar(main_frame, mode="determinate")
-        self.progress.grid(row=10, column=0, columnspan=3, sticky="ew", pady=(0, 5))
+        self.progress.grid(row=11, column=0, columnspan=3, sticky="ew", pady=(0, 5))
 
         # Durum etiketi
         self.status_label = ttk.Label(main_frame, text="Hazır")
-        self.status_label.grid(row=11, column=0, sticky="w", pady=(0, 5))
+        self.status_label.grid(row=12, column=0, sticky="w", pady=(0, 5))
 
         # Log alanı
         ttk.Label(main_frame, text="İşlem Günlüğü:").grid(
-            row=12, column=0, sticky="w", pady=(0, 5))
+            row=13, column=0, sticky="w", pady=(0, 5))
         self.log_text = scrolledtext.ScrolledText(
             main_frame, height=10, state="disabled")
-        self.log_text.grid(row=13, column=0, columnspan=3, sticky="nsew", pady=(0, 10))
-        main_frame.rowconfigure(13, weight=1)
+        self.log_text.grid(row=14, column=0, columnspan=3, sticky="nsew", pady=(0, 10))
+        main_frame.rowconfigure(14, weight=1)
 
     # ------------------------------------------------------------------
     # URL yardımcıları
@@ -290,25 +354,69 @@ class YouTubeDownloader:
             self.url_type_label.config(
                 text="📺 Kanalın tüm videoları algılandı", foreground="green")
         elif self.is_video_url(url):
+            name = SITE_NAMES.get(self.detect_site(url), "")
             self.url_type_label.config(
-                text="🎬 Tek video algılandı", foreground="blue")
+                text=f"🎬 {name} videosu algılandı", foreground="blue")
         else:
-            self.url_type_label.config(text="")
+            profile = self.profile_platform(url)
+            if profile:
+                self.url_type_label.config(
+                    text=f"⚠️ {profile} profili — toplu indirme desteklenmiyor",
+                    foreground="#b45309")
+            else:
+                self.url_type_label.config(text="")
 
     @staticmethod
-    def is_video_url(url: str) -> bool:
-        """Tek video URL'si mi kontrol eder."""
-        return bool(re.search(
-            r"youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/", url))
+    def detect_site(url: str) -> str:
+        """URL'nin hangi platforma ait olduğunu döndürür ('other' olabilir)."""
+        u = url.lower()
+        if "youtube.com" in u or "youtu.be" in u:
+            return "youtube"
+        if "instagram.com" in u:
+            return "instagram"
+        if "tiktok.com" in u:
+            return "tiktok"
+        if "facebook.com" in u or "fb.watch" in u or "fb.com" in u:
+            return "facebook"
+        return "other"
 
-    @staticmethod
-    def is_channel_url(url: str) -> bool:
+    @classmethod
+    def is_video_url(cls, url: str) -> bool:
+        """Tek video URL'si mi kontrol eder (desteklenen 4 platform)."""
+        pattern = VIDEO_PATTERNS.get(cls.detect_site(url))
+        return bool(pattern and re.search(pattern, url.lower()))
+
+    @classmethod
+    def is_channel_url(cls, url: str) -> bool:
         """Kanal (tüm videolar) URL'si mi kontrol eder."""
         # /@kanal, /@kanal/videos, /channel/ID, /c/ad, /user/ad (+ opsiyonel sekme)
-        return bool(re.search(
-            r"youtube\.com/@[\w.\-]+(?:/[A-Za-z_]+)?/?$"
-            r"|youtube\.com/(?:channel|user|c)/[\w.\-]+(?:/[A-Za-z_]+)?/?$",
-            url))
+        if cls.detect_site(url) != "youtube":
+            return False
+        return bool(re.search(CHANNEL_PATTERNS, url))
+
+    @classmethod
+    def profile_platform(cls, url: str) -> str | None:
+        """
+        YouTube dışı bir profil/sayfa URL'si ise platform adını döndürür.
+
+        Bu profillerin "tüm videoları" çekilemez (giriş ve platform kısıtları);
+        kullanıcıya dürüst bir açıklama göstermek için kullanılır.
+        """
+        site = cls.detect_site(url)
+        if site in ("other", "youtube") or cls.is_video_url(url):
+            return None
+
+        bare = re.sub(r"[?#].*$", "", url).rstrip("/")
+        if site == "instagram" and re.fullmatch(
+                r"https?://(?:www\.)?instagram\.com/[\w.]+", bare):
+            return SITE_NAMES[site]
+        if site == "tiktok" and re.fullmatch(
+                r"https?://(?:www\.)?tiktok\.com/@[\w.\-]+", bare):
+            return SITE_NAMES[site]
+        if site == "facebook" and re.fullmatch(
+                r"https?://(?:www\.|m\.)?facebook\.com/[\w.\-]+", bare):
+            return SITE_NAMES[site]
+        return None
 
     def paste_url(self):
         """Panodan URL yapıştırır."""
@@ -421,6 +529,7 @@ class YouTubeDownloader:
 
         is_mp3 = settings["format"] == "MP3 (Sadece Ses)"
         quality = settings["quality"]
+        site = settings.get("site") or "youtube"
 
         opts = {
             "outtmpl": os.path.join(download_path, "%(title)s.%(ext)s"),
@@ -444,6 +553,16 @@ class YouTubeDownloader:
         if self.has_node:
             opts["js_runtimes"] = {"node": {}}
 
+        # Facebook / Instagram'ın büyük bölümü giriş (login) ister.
+        # İstendiğinde tarayıcının çerez deposu okunur.
+        if settings.get("use_cookies"):
+            browser = _find_browser_for_cookies()
+            if browser:
+                opts["cookiesfrombrowser"] = (browser,)
+                self.log(f"Tarayıcı çerezleri kullanılacak: {browser}")
+            else:
+                self.log("UYARI: Tarayıcı bulunamadı — çerez kullanılmayacak.")
+
         # Kapak fotoğrafı indirilen dosyanın içine gömülür (MP4 ve MP3).
         # yt-dlp kendi indirdiği thumbnail'ı gömmeden önce diske yazar.
         opts["writethumbnail"] = True
@@ -465,24 +584,45 @@ class YouTubeDownloader:
             opts["merge_output_format"] = "mp4"
             # Birleştirmeden sonra (post_process) eklenir.
             opts["postprocessors"] = [{"key": "EmbedThumbnail"}]
+            opts["format"] = self._video_format(site, quality)
+
+        return opts
+
+    @staticmethod
+    def _video_format(site: str, quality: str) -> str:
+        """
+        Platforma ve seçilen kaliteye göre format zinciri üretir.
+
+        YouTube H.264/MP4 + m4a zincirleriyle en uyumlu sonucu verir.
+        Instagram/TikTok/Facebook'un format adları farklı olduğundan (avc1,
+        m4a etiketleri yok) genel zincir kullanılır; sonuç yine mp4'e
+        birleştirilir.
+        """
+        if site == "youtube":
             if quality == "En İyi":
                 # Önce H.264/MP4 (her oynatıcıda çalışır), olmazsa genel seçenek
-                opts["format"] = (
+                return (
                     "bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/"
                     "bestvideo[ext=mp4]+bestaudio[ext=m4a]/"
                     "bestvideo*+bestaudio/"
                     "best"
                 )
-            else:
-                height = quality.replace("p", "")
-                opts["format"] = (
-                    f"bestvideo[height<={height}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/"
-                    f"bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/"
-                    f"bestvideo[height<={height}]+bestaudio/"
-                    f"best[height<={height}]"
-                )
+            height = quality.replace("p", "")
+            return (
+                f"bestvideo[height<={height}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/"
+                f"bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/"
+                f"bestvideo[height<={height}]+bestaudio/"
+                f"best[height<={height}]"
+            )
 
-        return opts
+        # Diğer platformlar: ayrı video+ses varsa birleştir, yoksa tek parça al
+        if quality == "En İyi":
+            return "bestvideo+bestaudio/best"
+        height = quality.replace("p", "")
+        return (
+            f"bestvideo[height<={height}]+bestaudio/"
+            f"best[height<={height}]/best"
+        )
 
     # ------------------------------------------------------------------
     # İndirme akışı
@@ -495,16 +635,32 @@ class YouTubeDownloader:
 
         url = self.url_var.get().strip()
         if not url:
-            messagebox.showwarning("Uyarı", "Lütfen bir YouTube URL'si girin!")
+            messagebox.showwarning("Uyarı", "Lütfen bir video bağlantısı girin!")
             return
 
         if not (self.is_video_url(url) or self.is_channel_url(url)):
-            messagebox.showwarning(
-                "Uyarı",
-                "Geçersiz YouTube URL'si!\n\nÖrnekler:\n"
-                "  • https://www.youtube.com/watch?v=...\n"
-                "  • https://youtu.be/...\n"
-                "  • https://www.youtube.com/@kanal/videos")
+            profile = self.profile_platform(url)
+            if profile:
+                messagebox.showwarning(
+                    f"{profile} — Toplu İndirme Desteklenmiyor",
+                    f"{profile} profilinin TÜM videoları şu an toplu olarak "
+                    "indirilemiyor.\n\n"
+                    "Sebep: bu platformlar toplu çekmeye giriş (login) ve "
+                    "istek limiti kısıtları uyguluyor.\n\n"
+                    "Çözüm: tek tek video linklerini kullanın. "
+                    f"{profile} uygulamasında videonun menüsünden "
+                    "\"Bağlantıyı kopyala\" deyip buraya yapıştırın.\n\n"
+                    "Tek video linkleri sorunsuz çalışır.")
+            else:
+                messagebox.showwarning(
+                    "Geçersiz Bağlantı",
+                    "Bu bağlantıdan video indiremedim.\n\nÖrnekler:\n"
+                    "  • https://www.youtube.com/watch?v=...\n"
+                    "  • https://youtu.be/...\n"
+                    "  • https://www.instagram.com/reel/...\n"
+                    "  • https://www.tiktok.com/@kullanici/video/...\n"
+                    "  • https://www.facebook.com/sayfa/videos/...\n"
+                    "  • https://www.youtube.com/@kanal/videos  (toplu)")
             return
 
         if not self.has_ffmpeg:
@@ -521,6 +677,8 @@ class YouTubeDownloader:
             "format": self.format_var.get(),
             "quality": self.quality_var.get(),
             "is_channel": self.is_channel_url(url),
+            "site": self.detect_site(url),
+            "use_cookies": bool(self.use_cookies_var.get()),
         }
 
         self._prepare_download()
@@ -662,11 +820,29 @@ class YouTubeDownloader:
 
         try:
             opts = self.get_ydl_opts(settings)
-            self.log("Kanalın tüm videoları indiriliyor: " + url if is_channel
-                     else "Video indiriliyor: " + url)
+            if is_channel:
+                self.log("Kanalın tüm videoları indiriliyor: " + url)
+            else:
+                name = SITE_NAMES.get(settings.get("site", ""), "Video")
+                self.log(f"{name} videosu indiriliyor: {url}")
 
             with yt_dlp.YoutubeDL(opts) as ydl:
                 ydl.download([url])
+
+            # Çerez istendi ama HİÇBİR şey inmediyse ve hata çerez kaynaklıysa,
+            # çerezleri kullanmadan tekrar dene (tarayıcı çezleri okunamamış
+            # olabilir — Chrome/Edge yeni şifrelemesinde bu sık görülür).
+            if (settings.get("use_cookies")
+                    and not self._done_files
+                    and not self.cancel_requested
+                    and any("cookie" in (err or "").lower()
+                            for err in self._errors)):
+                self.log("Tarayıcı çerezleri kullanılamadı — girişsiz deneniyor...")
+                self._errors = []
+                settings = dict(settings, use_cookies=False)
+                opts = self.get_ydl_opts(settings)
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    ydl.download([url])
 
             self._report_result()
 
@@ -801,11 +977,14 @@ class YouTubeDownloader:
         """Hakkında penceresi."""
         messagebox.showinfo(
             "Hakkında",
-            f"YouTube İndirici v{get_current_version()}\n\n"
+            f"Video İndirici v{get_current_version()}\n\n"
+            "Platformlar:\n"
+            "• YouTube · Instagram · TikTok · Facebook\n\n"
             "Özellikler:\n"
             "• Tek video indirme\n"
-            "• Kanalın tüm videolarını indirme\n"
+            "• YouTube kanalının tüm videolarını indirme\n"
             "• MP3 ses indirme\n"
+            "• Kapak fotoğrafı gömme\n"
             "• İptal desteği\n"
             "• Otomatik güncelleme\n\n"
             "yt-dlp kullanılarak geliştirilmiştir.")
@@ -813,10 +992,10 @@ class YouTubeDownloader:
 
 def _run_self_test():
     """
-    Gizli mod: `YouTubeDownloader.exe --test`
+    Gizli mod: `VideoDownloader.exe --test`
 
     Paketi olduğu gibi indirme yaparak doğrular ve sonucu
-    "YouTubeIndirici_test.txt" dosyasına yazar. Paketi kopyaladığınız
+    "VideoIndirici_test.txt" dosyasına yazar. Paketi kopyaladığınız
     bilgisayarda bu dosyayı açarak sonucu görebilirsiniz.
     """
     lines = []
@@ -824,7 +1003,7 @@ def _run_self_test():
     try:
         root = Tk()
         root.withdraw()
-        app = YouTubeDownloader(root)
+        app = VideoDownloader(root)
         root.withdraw()
 
         lines.append(f"Sürüm: {get_current_version()}")
@@ -880,8 +1059,8 @@ def _run_self_test():
                 pass
 
     text = "\n".join(lines) + "\n"
-    for target in (Path.cwd() / "YouTubeIndirici_test.txt",
-                   Path(tempfile.gettempdir()) / "YouTubeIndirici_test.txt"):
+    for target in (Path.cwd() / "VideoIndirici_test.txt",
+                   Path(tempfile.gettempdir()) / "VideoIndirici_test.txt"):
         try:
             target.write_text(text, encoding="utf-8")
             break
@@ -889,9 +1068,19 @@ def _run_self_test():
             continue
 
 
+def _module_status(name: str) -> str:
+    """Bir paketin (paketlenmiş halde) bulunup bulunmadığını yazar."""
+    try:
+        mod = __import__(name)
+        version = getattr(mod, "__version__", None)
+        return f"var{f' ({version})' if version else ''}"
+    except Exception as e:
+        return f"YOK — {type(e).__name__}: {e}"
+
+
 def _run_diagnostics():
     """
-    Gizli mod: `YouTubeDownloader.exe --diag`
+    Gizli mod: `VideoDownloader.exe --diag`
 
     Ortam bilgisini bir metin dosyasına yazar ve çıkar. Paketin başka bir
     bilgisayarda neden çalışmadığını anlamak için kullanılır.
@@ -907,6 +1096,8 @@ def _run_diagnostics():
         "Bulunan ffmpeg": _find_ffmpeg(),
         "PATH'te node": shutil.which("node"),
         "PATH'te ffprobe": shutil.which("ffprobe"),
+        "curl_cffi (TikTok/Instagram)": _module_status("curl_cffi"),
+        "mutagen (kapak fotoğrafı)": _module_status("mutagen"),
         "İşletim sistemi": os.name,
     }
 
@@ -914,8 +1105,8 @@ def _run_diagnostics():
     text = "\n".join(lines) + "\n"
 
     targets = [
-        Path.cwd() / "YouTubeIndirici_diagnostik.txt",
-        Path(tempfile.gettempdir()) / "YouTubeIndirici_diagnostik.txt",
+        Path.cwd() / "VideoIndirici_diagnostik.txt",
+        Path(tempfile.gettempdir()) / "VideoIndirici_diagnostik.txt",
     ]
     for target in targets:
         try:
@@ -927,7 +1118,7 @@ def _run_diagnostics():
 
 def main():
     root = Tk()
-    YouTubeDownloader(root)
+    VideoDownloader(root)
     root.mainloop()
 
 

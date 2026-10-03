@@ -12,7 +12,7 @@ def build():
 
     args = [
         main_py,
-        '--name=YouTubeDownloader',
+        '--name=VideoIndirici',
         '--onefile',
         '--windowed',  # Konsol penceresi gösterme
         '--clean',
@@ -21,6 +21,10 @@ def build():
         '--hidden-import=mutagen',
         '--hidden-import=mutagen.mp4',
         '--hidden-import=mutagen.id3',
+        # TikTok / Instagram bot korumasını aşmak için (impersonation)
+        '--hidden-import=curl_cffi',
+        '--hidden-import=curl_cffi.impersonate',
+        '--hidden-import=curl_cffi.requests',
     ]
 
     if os.path.exists(icon_path):
@@ -28,7 +32,7 @@ def build():
 
     print("exe oluşturuluyor...")
     PyInstaller.__main__.run(args)
-    print("exe oluşturuldu: dist/YouTubeDownloader.exe")
+    print("exe oluşturuldu: dist/VideoIndirici.exe")
 
 if __name__ == "__main__":
     build()

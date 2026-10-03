@@ -1,31 +1,48 @@
-# YouTube İndirici 🎬
+# Video İndirici 🎬
 
-Windows için tek dosyalık YouTube indirme programı. Tek video, bir kanalın
-**tüm** videoları ve MP3 (sadece ses) indirmeyi destekler.
+Windows için tek dosyalık video indirme programı. **YouTube, Instagram, TikTok
+ve Facebook** bağlantılarından video veya MP3 indirir.
+
+## Platformlar
+
+| Platform | Tek video | Kanalın tümü |
+|---|---|---|
+| YouTube | ✅ | ✅ |
+| Instagram | ✅ (reel / gönderi) | — (giriş ister) |
+| TikTok | ✅ (tekil + `vm.tiktok.com`) | — (platform kısıtı) |
+| Facebook | ✅ (`watch`, `/videos/`, `fb.watch`) | — (giriş ister) |
+
+> **Toplu indirme** yalnızca YouTube kanallarında çalışır. Diğer platformların
+> profilleri giriş (login) ve istek limiti kısıtları nedeniyle toplu olarak
+> çekilemez; program bunu açıkça söyler ve tek tek link önerir.
 
 ## Özellikler
 
-- **Tek video indirme** — `watch?v=`, `youtu.be/`, `shorts/` bağlantıları
-- **Kanalın tüm videoları** — `@kanal/videos` bağlantısını yapıştırın, hepsi sırayla iner
+- **Tek video indirme** — dört platformdan bağlantı yapıştırın
+- **YouTube kanalının tüm videoları** — `@kanal/videos` bağlantısı
 - **MP3 indirme** — "MP3 (Sadece Ses)" formatını seçin
 - **Kalite seçimi** — En İyi / 1080p / 720p / 480p / 360p
+- **Kapak fotoğrafı** — MP4 ve MP3 dosyasının içine YouTube/Instagram kapak
+  fotoğrafı gömülür (oynatıcıda albüm kapağı olarak görünür)
+- **Tarayıcı çerezleri** — Facebook/Instagram'ın giriş isteyen içerikleri için
+  kutucuğu işaretleyin; program tarayıcınızdaki (Edge/Chrome/Firefox…) çerezleri
+  kullanır
 - **İptal butonu** — devam eden indirmeyi durdurur, tamamlananlar silinmez
 - **Ses kontrolü** — birleştirme başarısız olursa program açıkça uyarır
-- **Kapak fotoğrafı** — MP4 ve MP3 dosyasının içine YouTube kapak fotoğrafı gömülür
-  (oynatıcıda/telefonda albüm kapağı olarak görünür)
 - **Otomatik güncelleme** — her açılışta GitHub'daki son sürümü kontrol eder
 
 ## Kurulum
 
-1. [`YouTubeIndirici.zip`](https://github.com/erdiege01/youtube-downloader/releases) dosyasını indirin
+1. [`VideoIndirici.zip`](https://github.com/erdiege01/youtube-downloader/releases)
+   dosyasını indirin
 2. Herhangi bir klasöre çıkartın
-3. `YouTubeDownloader.exe` dosyasına çift tıklayın
+3. `VideoIndirici.exe` dosyasına çift tıklayın
 
 Klasör yapısı bozulmamalıdır:
 
 ```
-YouTubeIndirici\
-  ├── YouTubeDownloader.exe
+VideoIndirici\
+  ├── VideoIndirici.exe
   ├── BENIOKU.txt
   └── ffmpeg\bin\ffmpeg.exe
 ```
@@ -38,12 +55,16 @@ FFmpeg kurulumu gerekmez — hepsi paketle birlikte gelir.
 Programı komut satırından test edebilirsiniz:
 
 ```powershell
-YouTubeDownloader.exe --test     # indirmeyi deneyip sonucu yazar
-YouTubeDownloader.exe --diag     # ortam bilgisini yazar
+VideoIndirici.exe --test     # indirmeyi deneyip sonucu yazar
+VideoIndirici.exe --diag     # ortam bilgisini yazar
 ```
 
-Sonuçlar `YouTubeIndirici_test.txt` ve `YouTubeIndirici_diagnostik.txt`
+Sonuçlar `VideoIndirici_test.txt` ve `VideoIndirici_diagnostik.txt`
 dosyalarına yazılır.
+
+**Facebook/Instagram "giriş yap" hatası verirse:** programdaki
+*"Tarayıcı çerezlerini kullan"* kutucuğunu işaretleyin ve o platforma
+tarayıcınızdan giriş yapmış olun.
 
 İlk açılışta Windows "Bilinmeyen yayıncı" uyarısı verirse:
 **Daha fazla bilgi → Yine de çalıştır**.
@@ -51,6 +72,8 @@ dosyalarına yazılır.
 ## Teknik
 
 - **Python 3** + [yt-dlp](https://github.com/yt-dlp/yt-dlp) (indirme motoru)
+- **curl_cffi** — TikTok/Instagram bot korumasını aşmak için gerekli (impersonation)
+- **mutagen** — MP4/MP3 içine kapak fotoğrafı gömme
 - **tkinter** (arayüz)
 - **FFmpeg** (video+ses birleştirme, MP3 dönüşümü)
 - **PyInstaller** (tek dosyalık `.exe` derlemesi)
@@ -62,10 +85,13 @@ dosyalarına yazılır.
 3. Yeni sürümü yayınlayın:
 
 ```powershell
-gh release create v1.2.0 --repo erdiege01/youtube-downloader --title "v1.2.0" --notes "..." dist\YouTubeDownloader.exe
+gh release create v1.3.0 --repo erdiege01/youtube-downloader --title "v1.3.0" --notes "..." dist\VideoIndirici.exe dist\VideoIndirici.zip
 ```
 
 Kullanıcılar bir sonraki açılışta güncellemeyi otomatik alır.
+
+> `updater.py` içindeki `ASSET_NAME` değeri release'e eklenen exe dosya
+> adıyla **aynı** olmalıdır.
 
 ## Lisans
 

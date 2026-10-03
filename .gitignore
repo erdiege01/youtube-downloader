@@ -11,6 +11,8 @@ __pycache__/
 venv/
 
 # Tanılama / test dosyaları
+VideoIndirici_test.txt
+VideoIndirici_diagnostik.txt
 YouTubeIndirici_test.txt
 YouTubeIndirici_diagnostik.txt
 
