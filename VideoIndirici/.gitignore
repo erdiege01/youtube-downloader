@@ -1,0 +1,17 @@
+*.iml
+.gradle/
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+app/build/
+
+# İmzalama anahtarı — asla depoya girmez! Kaybedilirse kurulu uygulama
+# güncellenemez; elle yedekleyin.
+keystore/
+keystore.properties
+*.keystore
+*.jks

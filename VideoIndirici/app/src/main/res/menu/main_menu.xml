@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_check_update"
+        android:title="@string/menu_check_update"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_update_ytdlp"
+        android:title="@string/menu_update_ytdlp"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_pick_cookies"
+        android:title="@string/menu_pick_cookies"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_about"
+        android:title="@string/menu_about"
+        app:showAsAction="never" />
+</menu>

@@ -1,0 +1,17 @@
+plugins {
+    id 'com.android.application' version '8.7.3' apply false
+}
+
+// Bu proje OneDrive senkronize edilen bir klasörde duruyor. Gradle'ın her
+// derlemede ürettiği yüzlerce MB'lık ara dosyanın bulutla senkronize
+// edilmemesi için çıktılar yerel diske yönlendirilir.
+// (Kaynak dosyalar depoda kalır; yalnızca build/ klasörleri taşınır.)
+def localBuildRoot = new File('C:/tools/videindirici-build')
+
+allprojects { p ->
+    if (p.path == ':') {
+        p.buildDir = new File(localBuildRoot, 'root')
+    } else {
+        p.buildDir = new File(localBuildRoot, p.path.substring(1).replace(':', '_'))
+    }
+}

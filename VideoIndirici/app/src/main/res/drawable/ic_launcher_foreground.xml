@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- İndirme okunun gövdesi -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M48,26 h12 v32 h-12 z" />
+
+    <!-- Okunun ucu (aşağı doğru) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M34,54 L54,74 L74,54 L66,46 L54,58 L42,46 Z" />
+
+    <!-- İndirilecek yüzey -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M34,78 h40 v8 h-40 z" />
+</vector>

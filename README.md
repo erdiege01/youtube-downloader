@@ -1,7 +1,7 @@
 # Video İndirici 🎬
 
-Windows için tek dosyalık video indirme programı. **YouTube, Instagram, TikTok
-ve Facebook** bağlantılarından video veya MP3 indirir.
+Windows ve **Android** için video indirme programı. **YouTube, Instagram,
+TikTok ve Facebook** bağlantılarından video veya MP3 indirir.
 
 ## Platformlar
 
@@ -50,6 +50,49 @@ VideoIndirici\
 **Gereksinimler:** Windows 10/11 (64 bit) ve internet. Python, Node.js veya
 FFmpeg kurulumu gerekmez — hepsi paketle birlikte gelir.
 
+## Android (telefon ve tablet)
+
+Windows sürümünün birebir aynısı, uygulama olarak. Kaynak kodu
+[`VideoIndirici/`](VideoIndirici/) klasöründedir.
+
+**Kurulum:**
+
+1. Yayın sayfasındaki APK'lardan **cihazınıza uygun olanı** indirin:
+   - `VideoIndirici-arm64-v8a.apk` — 2017'den sonra çıkan telefon/tabletlerin
+     neredeyse tamamı (bununla başlayın)
+   - `VideoIndirici-armeabi-v7a.apk` — eski cihazlar
+2. Dosyaya dokunun → **Kur**. "Bilinmeyen uygulama" izni isteyecektir
+   (Ayarlar → Uygulamalar → Özel erişim → Bilinmeyen uygulamaları yükle).
+3. İndirilen dosyalar `Download/VideoIndirici` klasörüne düşer.
+
+**Özellikler:** tek video, YouTube kanalının tümü, MP3, kapak fotoğrafı gömme,
+kalite seçimi, iptal, paylaş menüsünden link gönderme, otomatik güncelleme.
+
+**Çerez (Facebook/Instagram girişi):** Android'de tarayıcı çerezlerine doğrudan
+erişim yoktur. Kutucuğu işaretleyip tarayıcınızdan dışa aktardığınız
+`cookies.txt` dosyasını seçin (tarayıcıya "Get cookies.txt" uzantısı kurarak
+veya masaüstünden alıp telefona atarak).
+
+**Test kipi** (adb):
+
+```powershell
+adb shell am start -n dev.videoindirici/.MainActivity --ez test true --es test_urls "<bağlantı>"
+adb shell am start -n dev.videoindirici/.MainActivity --ez checkupdate true
+```
+
+Sonuç `Download/VideoIndirici/test_sonuc.txt` dosyasına yazılır.
+
+**Derleme:**
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot"
+.\gradlew.bat assembleRelease
+```
+
+Çıktı: `app\build\outputs\apk\release\VideoIndirici-*.apk`.
+İmza anahtarı `keystore\videoindirici.keystore` — **kaybedilirse kurulu
+uygulama güncellenemez**, yedekleyin (depoya eklenmez).
+
 ## Sorun Giderme
 
 Programı komut satırından test edebilirsiniz:
@@ -80,13 +123,23 @@ tarayıcınızdan giriş yapmış olun.
 
 ### Sürüm yayınlama
 
-1. `updater.py` içindeki `CURRENT_VERSION` değerini artırın
-2. `python build_exe.py` çalıştırın
-3. Yeni sürümü yayınlayın:
+1. `updater.py` içindeki `CURRENT_VERSION` değerini artırın (Android sürümüyle
+   aynı tutun: `app/build.gradle` → `appVersionName`)
+2. `python build_exe.py` çalıştırın, exe'yi `dist\VideoIndirici\` içine kopyalayıp
+   zip'i yeniden oluşturun
+3. Android: `.\gradlew.bat assembleRelease`
+4. Yeni sürümü yayınlayın:
 
 ```powershell
-gh release create v1.3.0 --repo erdiege01/youtube-downloader --title "v1.3.0" --notes "..." dist\VideoIndirici.exe dist\VideoIndirici.zip
+gh release create v1.5.0 --repo erdiege01/youtube-downloader --title "v1.5.0" --notes "..." `
+  dist\VideoIndirici.exe dist\VideoIndirici.zip `
+  <android>\app\build\outputs\apk\release\VideoIndirici-arm64-v8a.apk `
+  <android>\app\build\outputs\apk\release\VideoIndirici-armeabi-v7a.apk
 ```
+
+> Her release **hem exe hem APK içermelidir**: Windows güncelleme denetimi
+> `releases/latest`'i kullanır, Android de aynı etiketi. APK'sız bir release
+> yayınlanırsa Windows kullanıcılarının indirme bağlantısı bozulur.
 
 Kullanıcılar bir sonraki açılışta güncellemeyi otomatik alır.
 
@@ -99,3 +152,7 @@ MIT — bkz. [LICENSE](LICENSE).
 
 `ffmpeg\bin\ffmpeg.exe` [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) tarafından
 derlenen GPL sürümüdür ve FFmpeg'in GPL koşullarına tabidir.
+
+**Android uygulaması** [youtubedl-android](https://github.com/yausername/youtubedl-android)
+kütüphanesini (GPL-3.0) kullanır; bu nedenle Android derlemesi GPL-3.0
+koşullarına tabidir. Windows derlemesi MIT'dir.

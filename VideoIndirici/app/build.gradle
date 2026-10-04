@@ -1,0 +1,96 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Sürüm bilgisi tek kaynaktan okunur.
+// MASAÜSTÜ sürümle (updater.py CURRENT_VERSION) AYNI kalmalı — her iki
+// platform da aynı GitHub etiketini (v1.5.0) kontrol ediyor.
+def appVersionName = "1.5.0"
+def appVersionCode = 1
+
+// İmzalama anahtarı — kendi APK'mızı güncelleyebilmek için ZORUNLU.
+// Kaybedilirse kurulu uygulama güncellenemez (yeni APK "imza uyuşmazlığı" verir).
+def ksProps = new Properties()
+def ksPropsFile = file("keystore.properties")
+if (ksPropsFile.exists()) {
+    ksPropsFile.withInputStream { ksProps.load(it) }
+}
+
+android {
+    namespace 'dev.videoindirici'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "dev.videoindirici"
+        minSdk 26
+        targetSdk 34
+        versionCode appVersionCode
+        versionName appVersionName
+    }
+
+    signingConfigs {
+        release {
+            if (ksPropsFile.exists()) {
+                storeFile file(ksProps['storeFile'])
+                storePassword ksProps['storePassword']
+                keyAlias ksProps['keyAlias']
+                keyPassword ksProps['keyPassword']
+            }
+        }
+    }
+
+    // Cihaz başına tek ABI'lik APK üretir (arm64 + armv7).
+    // yt-dlp + Python + FFmpeg birlikte çok büyük olduğundan bütünleşik
+    // ("universal") APK gereksizdir; telefon/tabletlerin neredeyse tamamı
+    // bu iki mimariyi kapsar.
+    splits {
+        abi {
+            enable true
+            reset()
+            include 'arm64-v8a', 'armeabi-v7a'
+            universalApk false
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    // youtubedl-android, .so dosyalarının nativeLibraryDir'e ÇIKARILMASINI
+    // gerektirir (libpython.zip.so oradan okunur). Aksi halde kütüphane
+    // hiç başlamaz.
+    packaging {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    def youtubedlAndroid = "0.18.1"
+
+    // yt-dlp + gömülü Python 3.8
+    implementation "io.github.junkfood02.youtubedl-android:library:$youtubedlAndroid"
+    // FFmpeg: video+ses birleştirme, MP3, kapak gömme
+    implementation "io.github.junkfood02.youtubedl-android:ffmpeg:$youtubedlAndroid"
+
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.core:core:1.13.1'
+    implementation 'androidx.activity:activity:1.9.3'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'com.google.android.material:material:1.12.0'
+
+    // Kütüphane Kotlin ile yazılmış
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.0.21'
+}

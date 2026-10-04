@@ -1,0 +1,65 @@
+<resources>
+    <string name="app_name">Video İndirici</string>
+
+    <string name="url_hint">Bağlantı (YouTube · Instagram · TikTok · Facebook)</string>
+    <string name="paste">Yapıştır</string>
+
+    <string name="format_label">Format</string>
+    <string name="format_mp4">MP4 (Video)</string>
+    <string name="format_mp3">MP3 (Sadece Ses)</string>
+
+    <string name="quality_label">Kalite</string>
+    <string name="quality_best">En İyi</string>
+
+    <string name="cookies_label">Tarayıcı çerezlerini kullan (cookies.txt)</string>
+    <string name="cookies_missing">Çerez dosyası seçilmedi. Tarayıcınızdan dışa aktardığınız cookies.txt dosyasını seçin.</string>
+    <string name="cookies_saved">Çerez dosyası kaydedildi: %1$s</string>
+
+    <string name="download">İNDİR</string>
+    <string name="cancel">İPTAL</string>
+
+    <string name="log_label">İşlem Günlüğü</string>
+
+    <string name="status_ready">Hazır</string>
+    <string name="status_init">Motor hazırlanıyor…</string>
+    <string name="status_running">İndiriliyor…</string>
+
+    <string name="error_empty_url">Lütfen bir video bağlantısı girin.</string>
+    <string name="error_invalid_url">Bu bağlantıdan video indiremedim.\n\nÖrnekler:\n• https://www.youtube.com/watch?v=…\n• https://www.instagram.com/reel/…\n• https://www.tiktok.com/@kullanici/video/…\n• https://www.facebook.com/sayfa/videos/…\n• https://www.youtube.com/@kanal/videos (toplu)</string>
+
+    <string name="error_profile_title">%1$s — Toplu İndirme Desteklenmiyor</string>
+    <string name="error_profile_body">%1$s profilinin TÜM videoları şu an toplu olarak indirilemiyor.\n\nSebep: bu platformlar toplu çekmeye giriş (login) ve istek limiti kısıtları uyguluyor.\n\nÇözüm: tek tek video linklerini kullanın.</string>
+
+    <string name="site_youtube">YouTube</string>
+    <string name="site_instagram">Instagram</string>
+    <string name="site_tiktok">TikTok</string>
+    <string name="site_facebook">Facebook</string>
+
+    <string name="hint_video">%1$s videosu algılandı</string>
+    <string name="hint_channel">Kanalın tüm videoları algılandı</string>
+    <string name="hint_profile">%1$s profili — toplu indirme desteklenmiyor</string>
+
+    <string name="dir_label">İndirme Konumu</string>
+    <string name="dir_open">Klasörü Aç</string>
+
+    <string name="menu_check_update">Sürümü kontrol et</string>
+    <string name="menu_update_ytdlp">yt-dlp&#8217;yi güncelle</string>
+    <string name="menu_pick_cookies">Çerez dosyası seç…</string>
+    <string name="menu_about">Hakkında</string>
+
+    <string name="about_title">Hakkında</string>
+    <string name="about_body">Video İndirici %1$s\n\nPlatformlar:\n• YouTube · Instagram · TikTok · Facebook\n\nÖzellikler:\n• Tek video indirme\n• YouTube kanalının tüm videoları\n• MP3 ses indirme\n• Kapak fotoğrafı gömme\n• İptal desteği\n• Otomatik güncelleme\n\nyt-dlp kullanılarak geliştirilmiştir.</string>
+
+    <string name="update_available">Yeni sürüm var: %1$s\n\nKurmak ister misiniz?</string>
+    <string name="update_none">Güncel sürümü kullanıyorsunuz (%1$s).</string>
+    <string name="update_downloading">Güncelleme indiriliyor… %1$d%%</string>
+    <string name="update_ready">İndirildi. Kurulum ekranı açılıyor.</string>
+    <string name="update_error">Güncelleme indirilemedi: %1$s</string>
+
+    <string name="notif_channel_name">İndirmeler</string>
+    <string name="notif_channel_desc">Video indirme ilerlemesi</string>
+    <string name="notif_title">Video indiriliyor</string>
+
+    <string name="cancel_done">İndirme iptal edildi.</string>
+    <string name="grant_notif">Bildirim izni verilirse ilerleme durum çubuğunda görünür.</string>
+</resources>
