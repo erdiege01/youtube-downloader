@@ -137,6 +137,14 @@ public final class TestRunner {
             Set<String> after = snapshot(outDir);
             after.removeAll(before);
 
+            // Artık dosyaları temizle ve Medya Deposu'na bildir — yoksa
+            // test dosyaları da Galeri'de görünmez ve .temp kopyaları birikir.
+            int leftovers = Storage.cleanupLeftovers(outDir);
+            if (leftovers > 0) {
+                line(listener, report, leftovers + " artik dosya temizlendi.");
+            }
+            Storage.indexAll(ctx, outDir);
+
             line(listener, report, "yt-dlp cikti (son kisim):");
             line(listener, report, indent(lastLines(resp.getOut(), 8)));
 

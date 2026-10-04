@@ -162,6 +162,17 @@
                 android:textSize="12sp"
                 android:alpha="0.7" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/openFolderButton"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="0dp"
+                android:contentDescription="@string/dir_open"
+                android:text="@string/dir_open"
+                app:icon="@android:drawable/ic_menu_sort_by_size"
+                app:iconGravity="textStart" />
+
             <!-- Günlük -->
             <TextView
                 android:layout_width="wrap_content"

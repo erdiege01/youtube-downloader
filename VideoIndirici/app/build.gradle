@@ -5,7 +5,7 @@ plugins {
 // Sürüm bilgisi tek kaynaktan okunur.
 // MASAÜSTÜ sürümle (updater.py CURRENT_VERSION) AYNI kalmalı — her iki
 // platform da aynı GitHub etiketini (v1.5.0) kontrol ediyor.
-def appVersionName = "1.5.0"
+def appVersionName = "1.6.0"
 def appVersionCode = 1
 
 // İmzalama anahtarı — kendi APK'mızı güncelleyebilmek için ZORUNLU.

@@ -263,14 +263,18 @@ public class DownloadService extends Service {
             boolean publish = Storage.needsPublishing(this, dir);
             StringBuilder sb = new StringBuilder();
             for (String name : produced) {
+                File f = new File(dir, name);
                 if (publish) {
-                    File f = new File(dir, name);
                     if (Storage.publish(this, f)) {
                         appendLog("Kaydedildi: Download/VideoIndirici/" + name);
                     } else {
                         appendLog("Klasöre kaydedildi: " + name);
+                        Storage.indexFile(this, f);
                     }
                 } else {
+                    // Doğrudan genel klasöre yazıldı: Medya Deposu'na bildir,
+                    // yoksa Galeri bu dosyayı göstermez.
+                    Storage.indexFile(this, f);
                     appendLog("İndirildi: " + name);
                 }
                 if (sb.length() > 0) {

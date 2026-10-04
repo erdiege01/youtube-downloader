@@ -119,6 +119,7 @@ public class MainActivity extends AppCompatActivity implements DownloadService.L
         downloadButton.setOnClickListener(v -> startDownload());
         cancelButton.setOnClickListener(v -> DownloadService.cancel(this));
         findViewById(R.id.pasteButton).setOnClickListener(v -> pasteFromClipboard());
+        findViewById(R.id.openFolderButton).setOnClickListener(v -> openOutputFolder());
 
         urlInput.addTextChangedListener(new TextWatcher() {
             @Override
@@ -368,6 +369,22 @@ public class MainActivity extends AppCompatActivity implements DownloadService.L
         dirText.setText("Kayıt: " + dir.getAbsolutePath());
     }
 
+    /**
+     * "Klasörü Aç" — kullanıcının "dosyalar nereye gitti?" sorusunu tek
+     * dokunuşla çözer. Dosyalar uygulamasını indirme klasöründe açar.
+     */
+    private void openOutputFolder() {
+        File dir = Engine.resolveOutputDir(this);
+        if (Storage.openFolder(this, dir)) {
+            log("Klasör açıldı: " + dir.getAbsolutePath());
+        } else {
+            // Bazı üreticilerin dosya yöneticisi DocumentsProvider'ı
+            // reddedebiliyor: en azından yolu göster.
+            toast(dir.getAbsolutePath());
+            log("Klasör: " + dir.getAbsolutePath());
+        }
+    }
+
     private void logOutputDir(File dir) {
         appendLog("Çıkış klasörü: " + dir.getAbsolutePath());
     }
@@ -583,6 +600,13 @@ public class MainActivity extends AppCompatActivity implements DownloadService.L
     private void handleIntent(Intent intent) {
         if (intent == null) {
             return;
+        }
+
+        if (intent.getBooleanExtra("reindex", false)) {
+            File dir = Engine.resolveOutputDir(this);
+            int n = Storage.indexAll(this, dir);
+            log(n + " dosya Medya Deposu'na tarandı (Galeri için)");
+            toast(n + " dosya tarandı");
         }
 
         if (intent.getBooleanExtra("checkupdate", false)) {
