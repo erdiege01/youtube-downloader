@@ -89,9 +89,19 @@ $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot"
 .\gradlew.bat assembleRelease
 ```
 
-Çıktı: `app\build\outputs\apk\release\VideoIndirici-*.apk`.
-İmza anahtarı `keystore\videoindirici.keystore` — **kaybedilirse kurulu
-uygulama güncellenemez**, yedekleyin (depoya eklenmez).
+Çıktı (derleme çıktıları OneDrive yerine yerel diske yönlendirildiği için):
+`C:\tools\videindirici-build\app\outputs\apk\release\`
+
+Bu iki APK'yi paket klasörüne kopyalayıp yeniden adlandırın:
+
+```powershell
+$rel = "C:\tools\videindirici-build\app\outputs\apk\release"
+Copy-Item "$rel\app-arm64-v8a-release.apk"   "dist\VideoIndirici\VideoIndirici-arm64-v8a.apk" -Force
+Copy-Item "$rel\app-armeabi-v7a-release.apk" "dist\VideoIndirici\VideoIndirici-armeabi-v7a.apk" -Force
+```
+
+İmza anahtarı `VideoIndirici\keystore\videoindirici.keystore` — **kaybedilirse
+kurulu uygulama güncellenemez**, yedekleyin (depoya eklenmez).
 
 ## Sorun Giderme
 
@@ -123,18 +133,34 @@ tarayıcınızdan giriş yapmış olun.
 
 ### Sürüm yayınlama
 
+Tüm dağıtım dosyaları **tek klasörde** durur — `dist\VideoIndirici\`:
+
+```
+dist\VideoIndirici\
+├── VideoIndirici.exe                  Windows
+├── ffmpeg\bin\ffmpeg.exe              Windows (zorunlu)
+├── VideoIndirici-arm64-v8a.apk        Android — yeni cihazlar
+├── VideoIndirici-armeabi-v7a.apk      Android — eski cihazlar
+├── BENIOKU.txt
+└── KURULUM.txt
+```
+
+`dist\VideoIndirici.zip` bu klasörün **APK'lar hariç** hâlidir (Windows
+kullanıcısının indirmesi gereken ~64 MB). ZIP'i `python make_zip.py` ile
+üretin — PowerShell 5.1 betiği ANSI okuduğu için Türkçe yol bozuluyor.
+
 1. `updater.py` içindeki `CURRENT_VERSION` değerini artırın (Android sürümüyle
-   aynı tutun: `app/build.gradle` → `appVersionName`)
-2. `python build_exe.py` çalıştırın, exe'yi `dist\VideoIndirici\` içine kopyalayıp
-   zip'i yeniden oluşturun
-3. Android: `.\gradlew.bat assembleRelease`
-4. Yeni sürümü yayınlayın:
+   aynı tutun: `VideoIndirici\app\build.gradle` → `appVersionName`)
+2. Windows: `python build_exe.py`, sonra exe'yi `dist\VideoIndirici\` içine kopyalayın
+3. Android: `cd VideoIndirici && .\gradlew.bat assembleRelease` (yukarıdaki kopya adımı)
+4. `python make_zip.py`
+5. Yeni sürümü yayınlayın:
 
 ```powershell
-gh release create v1.5.0 --repo erdiege01/youtube-downloader --title "v1.5.0" --notes "..." `
+gh release create v1.6.0 --repo erdiege01/youtube-downloader --title "v1.6.0" --notes "..." `
   dist\VideoIndirici.exe dist\VideoIndirici.zip `
-  <android>\app\build\outputs\apk\release\VideoIndirici-arm64-v8a.apk `
-  <android>\app\build\outputs\apk\release\VideoIndirici-armeabi-v7a.apk
+  dist\VideoIndirici\VideoIndirici-arm64-v8a.apk `
+  dist\VideoIndirici\VideoIndirici-armeabi-v7a.apk
 ```
 
 > Her release **hem exe hem APK içermelidir**: Windows güncelleme denetimi
